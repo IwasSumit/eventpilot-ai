@@ -1,9 +1,9 @@
 {
   "functions": {
-    "src/app/api/attendee/**":         { "maxDuration": 30 },
-    "src/app/api/organizer/recommend": { "maxDuration": 30 },
+    "src/app/api/attendee/**":         { "maxDuration": 120 },
+    "src/app/api/organizer/recommend": { "maxDuration": 60 },
     "src/app/api/organizer/alerts/**": { "maxDuration": 30 },
-    "src/app/api/vendor/advice":       { "maxDuration": 30 },
+    "src/app/api/vendor/advice":       { "maxDuration": 45 },
     "src/app/api/vendor/action":       { "maxDuration": 30 },
     "src/app/api/keepalive":           { "maxDuration": 15 }
   }
