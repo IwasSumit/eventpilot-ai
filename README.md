@@ -4,7 +4,7 @@
 
 ### Google Cloud Rapid Agent Hackathon 2026 · MongoDB Partner Track
 
-**Live Demo:** https://eventpilot-ai.vercel.app
+**Live Demo:** https://eventpilot-ai-xi.vercel.app/
 
 **Demo Video:** https://youtu.be/YOUR_VIDEO_ID
 
