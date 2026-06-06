@@ -43,7 +43,12 @@ export async function callAgentBuilder(
   console.log('AGENT:', agentId)
   console.log('========================')
 
-  const token = await getAccessToken()
+  console.log('Getting access token...')
+
+const token = await getAccessToken()
+
+console.log('Token received')
+console.log(token?.substring(0, 20))
 
   const endpoint =
     `https://aiplatform.googleapis.com/v1beta1/projects/${project}/locations/global/interactions`
