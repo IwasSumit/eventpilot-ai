@@ -1,9 +1,10 @@
 
 'use client'
-
-import { useState, useEffect, useCallback } from 'react'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts'
 import Link from 'next/link'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 const VENDORS = [
   { id: 'v-ramen', name: 'Ramen Stall' },
@@ -28,26 +29,37 @@ interface VendorData {
 
 export default function VendorDashboard() {
   const [selectedId, setSelectedId] = useState('v-ramen')
+  const currentVendorRef = useRef(selectedId)
   const [data, setData] = useState<VendorData | null>(null)
   const [loading, setLoading] = useState(false)
   const [adviceMap, setAdviceMap] = useState<Record<string, string>>({})
-  const [history, setHistory] = useState<{ t: string; q: number }[]>([])
+  const [historyMap, setHistoryMap] =
+    useState<Record<string, { t: string; q: number }[]>>({})
   const [actionMsg, setActionMsg] = useState<string | null>(null)
   const [restockingItem, setRestockingItem] = useState<string | null>(null)
   const [openingCounter, setOpeningCounter] = useState(false)
-  const [generatingAdvice, setGeneratingAdvice] = useState(false)
+  const [generatingAdvice, setGeneratingAdvice] =
+    useState<Record<string, boolean>>({})
 
-  const loadVendor = useCallback((id: string) => {
+  const loadVendor = useCallback(async (id: string) => {
     setLoading(true)
     setActionMsg(null)
 
-    fetch(`/api/vendor/${id}`)
-      .then(r => r.json())
-      .then(d => {
-        setData(d)
+    try {
+      const response = await fetch(`/api/vendor/${id}`)
+      const d = await response.json()
 
-        setHistory(prev => [
-          ...prev.slice(-19),
+      // Ignore stale responses
+      if (currentVendorRef.current !== id) {
+        return
+      }
+
+      setData(d)
+
+      setHistoryMap(prev => ({
+        ...prev,
+        [id]: [
+          ...(prev[id] ?? []).slice(-19),
           {
             t: new Date().toLocaleTimeString('en', {
               hour: '2-digit',
@@ -55,26 +67,45 @@ export default function VendorDashboard() {
             }),
             q: d.queue?.currentLength ?? 0
           }
-        ])
-
+        ]
+      }))
+    } finally {
+      if (currentVendorRef.current === id) {
         setLoading(false)
-      })
+      }
+    }
   }, [])
 
   useEffect(() => {
     loadVendor(selectedId)
-    setHistory([])
   }, [selectedId, loadVendor])
 
   useEffect(() => {
-    const interval = setInterval(() => loadVendor(selectedId), 10000)
+    currentVendorRef.current = selectedId
+  }, [selectedId])
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+
+      if (document.hidden) return;
+
+      await fetch('/api/simulation/tick', {
+        method: 'POST'
+      })
+
+      loadVendor(currentVendorRef.current)
+    }, 15000)
+
     return () => clearInterval(interval)
-  }, [selectedId, loadVendor])
+  }, [loadVendor])
 
   const getAdvice = async () => {
-    if (!data || generatingAdvice) return
+    if (!data || generatingAdvice[selectedId]) return
 
-    setGeneratingAdvice(true)
+    setGeneratingAdvice(prev => ({
+      ...prev,
+      [selectedId]: true
+    }))
 
     try {
       const res = await fetch('/api/vendor/advice', {
@@ -97,7 +128,10 @@ export default function VendorDashboard() {
         }))
       }
     } finally {
-      setGeneratingAdvice(false)
+      setGeneratingAdvice(prev => ({
+        ...prev,
+        [selectedId]: false
+      }))
     }
   }
 
@@ -218,22 +252,95 @@ export default function VendorDashboard() {
               <div className="text-3xl font-bold mb-1">{data.queue?.currentLength ?? 0}</div>
               <div className="text-xs text-gray-500 mb-4">people in queue</div>
               <div className="text-3xl font-bold mb-1">{data.queuePrediction?.predictedWaitMinutes ?? 0} min</div>
-              <div className="text-xs text-gray-500">
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+
                 {Math.round((data.queuePrediction?.confidence ?? 0) * 100)}% confidence
+
+                <span
+                  title="
+Confidence indicates how reliable the predicted wait time is.
+Higher confidence means the forecast closely matches current queue conditions.
+"
+                  className="cursor-help"
+                >
+                  ⓘ
+                </span>
+
               </div>
             </div>
 
             {/* Queue trend */}
             <div className="col-span-6 bg-gray-900 rounded-2xl p-6 border border-gray-800">
               <div className="text-xs text-gray-500 uppercase mb-4">Queue Trend</div>
-              <ResponsiveContainer width="100%" height={120}>
-                <LineChart data={history}>
-                  <XAxis dataKey="t" tick={{ fill: '#6b7280', fontSize: 11 }} />
-                  <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} />
-                  <Tooltip contentStyle={{ background: '#111827', border: '1px solid #374151' }} />
-                  <Line type="monotone" dataKey="q" stroke="#14b8a6" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
+              <div className="text-xs text-gray-600 mb-4">
+                Shows how queue length changes over time.
+                Rising trends may indicate the need to open additional counters.
+              </div>
+              {(historyMap[selectedId]?.length ?? 0) < 2 ? (
+
+                <div className="flex items-center justify-center h-[120px] text-sm text-gray-500">
+                  Collecting queue data...
+                </div>
+
+              ) : (
+
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={historyMap[selectedId]} margin={{
+                    top: 20,
+                    right: 30,
+                    left: 20,
+                    bottom: 30
+                  }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="t"
+                      tick={{ fill: '#9ca3af', fontSize: 12 }}
+                      minTickGap={30}
+                      label={{
+                        value: 'Time',
+                        position: 'bottom',
+                        offset: 10,
+                        fill: '#9ca3af'
+                      }}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fill: '#9ca3af', fontSize: 12 }}
+                      label={{
+                        value: 'People',
+                        angle: -90,
+                        position: 'insideLeft',
+                        style: { fill: '#9ca3af' }
+                      }}
+                    />
+                    <Tooltip
+                      formatter={(value) => [
+                        `${Number(value ?? 0)} people`,
+                        'Queue'
+                      ]}
+                      labelFormatter={(label) => `Time: ${label}`}
+                      contentStyle={{
+                        backgroundColor: '#111827',
+                        border: '1px solid #374151',
+                        borderRadius: '8px',
+                        color: '#ffffff'
+                      }}
+                    />
+
+                    <Line
+                      type="monotone"
+                      dataKey="q"
+                      stroke="#14b8a6"
+                      strokeWidth={3}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 7 }}
+                      name="Queue Size"
+                    />
+                    <Legend />
+                  </LineChart>
+                </ResponsiveContainer>
+
+              )}
             </div>
 
             {/* Inventory with restock buttons */}
@@ -258,7 +365,7 @@ export default function VendorDashboard() {
                           <span style={{ color }}>
                             {item.forecast.stockOutMinutes === 9999
                               ? 'Safe'
-                              : `~${item.forecast.stockOutMinutes} min`}
+                              : `~${item.forecast.stockOutMinutes} min until stockout (${item.forecast.riskLevel})`}
                           </span>
                           {needsRestock && (
                             <button
@@ -288,15 +395,28 @@ export default function VendorDashboard() {
             {/* AI advice */}
             <div className="col-span-4 bg-gray-900 rounded-2xl p-6 border border-gray-800">
               <div className="text-xs text-gray-500 uppercase mb-4">AI Recommendation</div>
-              {generatingAdvice && (
+              {generatingAdvice[selectedId] && (
                 <div className="mb-4 p-3 rounded-lg bg-teal-950 border border-teal-800 text-teal-300 text-sm animate-pulse">
                   🤖 EventPilot AI is analyzing queue conditions, inventory levels, and vendor risk...
                 </div>
               )}
               {adviceMap[selectedId] ? (
-                <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    h3: props => (
+                      <h3 className="text-white font-semibold mt-4 mb-2" {...props} />
+                    ),
+                    p: props => (
+                      <p className="text-gray-300 mb-3 leading-relaxed" {...props} />
+                    ),
+                    li: props => (
+                      <li className="text-gray-300 ml-5 list-disc mb-2" {...props} />
+                    )
+                  }}
+                >
                   {adviceMap[selectedId]}
-                </p>
+                </ReactMarkdown>
               ) : (
                 <div className="text-sm text-gray-600 mb-4 leading-relaxed">
                   Agent reads live queue and inventory from MongoDB MCP,
@@ -305,10 +425,10 @@ export default function VendorDashboard() {
               )}
               <button
                 onClick={getAdvice}
-                disabled={generatingAdvice}
+                disabled={generatingAdvice[selectedId]}
                 className="mt-4 w-full px-4 py-2 text-sm rounded-xl text-white transition-all disabled:opacity-70 disabled:cursor-not-allowed bg-teal-700 hover:bg-teal-600"
               >
-                {generatingAdvice ? (
+                {generatingAdvice[selectedId] ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     Generating Advice...

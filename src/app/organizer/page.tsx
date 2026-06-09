@@ -161,9 +161,9 @@ export default function OrganizerDashboard() {
           )}
           <span className="text-xs text-gray-500">Simulation every 10s</span>
           <div className={`px-3 py-1 rounded-full text-xs font-medium ${data?.eventRisk.level === 'critical' ? 'bg-red-900 text-red-300' :
-              data?.eventRisk.level === 'high' ? 'bg-orange-900 text-orange-300' :
-                data?.eventRisk.level === 'attention' ? 'bg-yellow-900 text-yellow-300' :
-                  'bg-green-900 text-green-300'
+            data?.eventRisk.level === 'high' ? 'bg-orange-900 text-orange-300' :
+              data?.eventRisk.level === 'attention' ? 'bg-yellow-900 text-yellow-300' :
+                'bg-green-900 text-green-300'
             }`}>
             Event Risk: {data?.eventRisk.score ?? '—'} — {data?.eventRisk.level}
           </div>
@@ -259,10 +259,10 @@ export default function OrganizerDashboard() {
               {data?.alerts.map(alert => (
                 <div key={alert._id}
                   className={`p-4 rounded-xl border text-sm transition-all duration-300 ${approvedAlerts.has(alert._id)
-                      ? 'bg-green-950 border-green-800'
-                      : alert.severity === 'critical'
-                        ? 'bg-red-950 border-red-800'
-                        : 'bg-yellow-950 border-yellow-800'
+                    ? 'bg-green-950 border-green-800'
+                    : alert.severity === 'critical'
+                      ? 'bg-red-950 border-red-800'
+                      : 'bg-yellow-950 border-yellow-800'
                     }`}>
                   <div className="flex items-center gap-2 mb-1">
                     <div className="font-medium flex-1 text-white">{alert.title}</div>
@@ -330,8 +330,8 @@ export default function OrganizerDashboard() {
                     className="p-3 rounded-xl bg-gray-900 border border-gray-800 text-xs">
                     <div className="flex items-center justify-between gap-2 mb-1.5">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${action.approved
-                          ? 'bg-green-900 text-green-300'
-                          : 'bg-purple-900 text-purple-300'
+                        ? 'bg-green-900 text-green-300'
+                        : 'bg-purple-900 text-purple-300'
                         }`}>
                         {action.approved ? '✓ ' : ''}{triggerLabel}
                       </span>
@@ -342,7 +342,9 @@ export default function OrganizerDashboard() {
                       </span>
                     </div>
                     <div className="text-gray-300 mb-1.5 leading-relaxed">{displayText}</div>
-                    <div className="text-gray-600 font-mono truncate">{action.mcpQueryUsed}</div>
+                    <div className="text-gray-500 text-xs">
+                      AI used live crowd and queue information to execute this action.
+                    </div>
                   </div>
                 )
               })}
@@ -355,6 +357,11 @@ export default function OrganizerDashboard() {
           <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wide mb-4">
             Zone Risk Overview
           </h2>
+          <p className="text-sm text-gray-500 mb-4">
+            This chart compares the current operational risk score across all event zones.
+            Higher scores indicate areas requiring immediate attention due to crowd density,
+            congestion, or safety concerns.
+          </p>
           <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={data?.zones.map(z => ({
@@ -362,9 +369,35 @@ export default function OrganizerDashboard() {
                 risk: z.computedRisk?.score ?? z.riskScore,
                 density: Math.round(z.crowdDensity * 100)
               }))}>
-                <XAxis dataKey="name" tick={{ fill: '#6b7280', fontSize: 12 }} />
-                <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} domain={[0, 100]} />
-                <Tooltip contentStyle={{ background: '#111827', border: '1px solid #374151' }} />
+                <XAxis
+                  dataKey="name"
+                  label={{
+                    value: 'Event Zones',
+                    position: 'insideBottom',
+                    offset: -5,
+                    fill: '#9ca3af',
+                    fontSize: 12
+                  }}
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                />
+                <YAxis
+                  label={{
+                    value: 'Risk Score',
+                    angle: -90,
+                    position: 'insideLeft',
+                    fill: '#9ca3af',
+                    fontSize: 12
+                  }}
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                  domain={[0, 100]}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: '#a8aeba',
+                    border: '1px solid #374151'
+                  }}
+                  formatter={(value) => [`${value}/100`, 'Risk Score']}
+                />
                 <Bar dataKey="risk" radius={[4, 4, 0, 0]}>
                   {data?.zones.map((z, i) => (
                     <Cell key={i} fill={COLORS[z.riskLevel]} />

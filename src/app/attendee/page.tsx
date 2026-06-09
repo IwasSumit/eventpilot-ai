@@ -23,9 +23,23 @@ const ACTIVITY_VENDOR_MAP: Record<string, string> = {
 }
 
 interface Activity {
-  activityId: string; activityName: string; zone: string
-  startTime: string; endTime: string; estimatedWait: number
-  confidence: number; crowdWarning?: string; score: number
+  activityId: string
+  activityName: string
+  zone: string
+
+  order: number
+
+  estimatedWait: number
+
+  estimatedDuration: number
+
+  confidence: number
+
+  crowdWarning?: string
+
+  score: number
+
+  whyNow: string
 }
 interface Result {
   sessionId: string
@@ -60,6 +74,8 @@ export default function AttendeePlanner() {
   const [loadingStage, setLoadingStage] = useState('')
 
   useEffect(() => {
+
+
     const savedItinerary = localStorage.getItem('eventpilot-itinerary')
     const savedDone = localStorage.getItem('eventpilot-itinerary-done')
 
@@ -110,13 +126,40 @@ export default function AttendeePlanner() {
       )
 
       localStorage.setItem(
+        'eventpilot-itinerary-created',
+        Date.now().toString()
+      )
+
+      localStorage.setItem(
         'eventpilot-itinerary-done',
         JSON.stringify([])
+      )
+    } else {
+      const error =
+        await res.json()
+
+      alert(
+        error.error ||
+        'Generation failed'
       )
     }
 
     setLoading(false)
     setLoadingStage('')
+  }
+
+  const created =
+    Number(
+      localStorage.getItem(
+        'eventpilot-itinerary-created'
+      )
+    )
+
+  if (
+    Date.now() - created >
+    6 * 60 * 60 * 1000
+  ) {
+    localStorage.clear()
   }
 
   // agent reads queue via MCP → decrements count → writes back via MCP
@@ -278,6 +321,7 @@ export default function AttendeePlanner() {
 
                   localStorage.removeItem('eventpilot-itinerary')
                   localStorage.removeItem('eventpilot-itinerary-done')
+                  localStorage.removeItem('eventpilot-itinerary-created')
                 }}
                 className="px-4 py-2 text-sm bg-gray-800 hover:bg-gray-700 rounded-xl text-gray-300 transition-colors">
                 Start over
@@ -306,9 +350,9 @@ export default function AttendeePlanner() {
                       }`}>
                     <div className="text-right min-w-16">
                       <div className={`text-sm font-medium ${isDone ? 'line-through text-gray-600' : ''}`}>
-                        {activity.startTime}
+                        Step {activity.order}
                       </div>
-                      <div className="text-xs text-gray-500">{activity.endTime}</div>
+                      <div className="text-xs text-gray-500"> ~{activity.estimatedDuration} mins</div>
                     </div>
                     <div className="flex flex-col items-center">
                       <div className="w-3 h-3 rounded-full bg-purple-500" />
@@ -333,6 +377,10 @@ export default function AttendeePlanner() {
 
                             <div className="text-xs text-gray-500 mt-1">
                               Priority Score: {activity.score}
+                            </div>
+
+                            <div className="text-sm text-gray-400 mt-2">
+                              {activity.whyNow}
                             </div>
                           </div>
 

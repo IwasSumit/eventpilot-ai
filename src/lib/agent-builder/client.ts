@@ -45,10 +45,10 @@ export async function callAgentBuilder(
 
   console.log('Getting access token...')
 
-const token = await getAccessToken()
+  const token = await getAccessToken()
 
-console.log('Token received')
-console.log(token?.substring(0, 20))
+  console.log('Token received')
+  console.log(token?.substring(0, 20))
 
   const endpoint =
     `https://aiplatform.googleapis.com/v1beta1/projects/${project}/locations/global/interactions`
@@ -111,14 +111,24 @@ console.log(token?.substring(0, 20))
 
   for (const line of lines) {
     try {
-      const json = JSON.parse(
-        line.replace('data: ', '')
-      )
+
+      const payload = line
+        .replace(/^data:\s*/, '')
+        .trim()
+
+      if (
+        payload === '[DONE]' ||
+        payload.length === 0
+      ) {
+        continue
+      }
+
+      const json = JSON.parse(payload)
 
       // Handle Agent Builder step.delta format
       if (
-        json.delta &&
-        typeof json.delta.text === 'string'
+        json.event_type === 'step.delta' &&
+        json.delta?.text
       ) {
         text += json.delta.text
       }

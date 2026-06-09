@@ -3,19 +3,61 @@ import { NextRequest, NextResponse } from 'next/server'
 import { callAgentBuilder } from '@/lib/agent-builder/client'
 import { mcpFind, mcpInsert } from '@/lib/agent-builder/mcp-tools'
 import { nanoid } from 'nanoid'
+import { extractJson } from '@/lib/extract-json'
 
 export async function POST(req: NextRequest) {
   try {
     const { zoneId, riskData } = await req.json()
-    const mcpQuery  = `find(zones, {_id: "${zoneId}"})`
-    const liveZone  = await mcpFind('zones',  { _id: zoneId })
+    const mcpQuery = `find(zones, {_id: "${zoneId}"})`
+    const liveZone = await mcpFind('zones', { _id: zoneId })
     const liveQueue = await mcpFind('queues', { zoneId })
 
-    const prompt = `Generate operational recommendations for this zone.
-Zone Risk Data: ${JSON.stringify(riskData)}
-Live Zone from MongoDB: ${JSON.stringify(liveZone)}
-Live Queue from MongoDB: ${JSON.stringify(liveQueue)}
-Respond with JSON: { "title": "", "recommendation": "", "severity": "warning|critical", "actions": [], "reasoning": "" }`
+    const prompt = `
+You are EventPilot AI, an operations advisor for live events.
+
+Your role is to INTERPRET operational signals.
+Do NOT invent new data.
+Do NOT perform calculations.
+Use ONLY the provided inputs.
+
+ZONE DATA:
+${JSON.stringify(riskData)}
+
+LIVE ZONE STATE:
+${JSON.stringify(liveZone)}
+
+LIVE QUEUE STATE:
+${JSON.stringify(liveQueue)}
+
+TASK:
+Generate ONE operational recommendation for venue staff.
+
+RULES:
+- Use severity "critical" only if the zone risk level is critical OR crowd density exceeds 0.90.
+- Otherwise use severity "warning".
+- Actions must be practical actions venue staff can execute immediately.
+- Provide between 2 and 4 actions.
+- Keep recommendations concise and operational.
+- Do NOT mention MongoDB.
+- Do NOT explain how the recommendation was generated.
+- Do NOT include markdown.
+- Do NOT wrap the response in \`\`\`.
+- Return ONLY valid JSON.
+- The response MUST begin with {
+- The response MUST end with }
+
+Return EXACTLY this schema:
+
+{
+  "title": "",
+  "recommendation": "",
+  "severity": "warning",
+  "actions": [
+    ""
+  ],
+  "reasoning": ""
+}
+`
 
     const agentResponse = await callAgentBuilder({
       prompt, sessionId: `rec-${nanoid()}`, context: { zoneId, riskData }
@@ -23,10 +65,14 @@ Respond with JSON: { "title": "", "recommendation": "", "severity": "warning|cri
 
     let parsed: Record<string, unknown>
     try {
-      parsed = JSON.parse(agentResponse.text.replace(/```json|```/g, '').trim())
+      parsed = JSON.parse(
+  extractJson(agentResponse.text)
+)
     } catch {
-      parsed = { title: 'Operational Alert', recommendation: agentResponse.text,
-        severity: 'warning', actions: [], reasoning: '' }
+      parsed = {
+        title: 'Operational Alert', recommendation: agentResponse.text,
+        severity: 'warning', actions: [], reasoning: ''
+      }
     }
 
     await mcpInsert('agent_actions', {

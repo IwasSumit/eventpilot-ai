@@ -15,13 +15,27 @@ Risk score: ${vendorData.vendorRisk}/100
 Queue: ${vendorData.queue?.currentLength ?? 0} people, ${vendorData.queuePrediction?.predictedWaitMinutes ?? 0} min wait
 Active counters: ${vendorData.vendor.activeCounters} of ${vendorData.vendor.maxCounters}
 Inventory: ${vendorData.inventory.map((i: { itemName: string; currentStock: number; forecast: { stockOutMinutes: number; riskLevel: string } }) =>
-  `${i.itemName}: ${i.currentStock} left, stockout in ${i.forecast.stockOutMinutes === 9999 ? 'N/A' : i.forecast.stockOutMinutes + ' min'}`).join(', ')}
+      `${i.itemName}: ${i.currentStock} left, stockout in ${i.forecast.stockOutMinutes === 9999 ? 'N/A' : i.forecast.stockOutMinutes + ' min'}`).join(', ')}
 Live MongoDB queue: ${JSON.stringify(liveData)}
 ${autoFired ? `URGENT: ${itemName} will stock out in under 20 minutes. Auto-triggered alert.` : ''}
-Give 2-3 specific actionable recommendations with timing. Plain text, not JSON.`
+Respond ONLY in markdown.
+
+Use this format:
+
+### Queue and Inventory Situation
+- Brief assessment of queue and stock status.
+
+### Actionable Recommendations
+1. Recommendation with timing.
+2. Recommendation with timing.
+3. Recommendation with timing.
+
+Keep response under 250 words.
+Avoid generic statements.
+Do not return JSON.`
 
     const response = await callAgentBuilder({ prompt, sessionId: `vendor-${nanoid()}`, context: { vendorId, autoFired: autoFired ?? false } })
-    const advice   = response.text
+    const advice = response.text
 
     const mcpQuery = `find(queues,{vendorId:"${vendorId}"}) + insert(alerts) + insert(agent_actions)`
 
