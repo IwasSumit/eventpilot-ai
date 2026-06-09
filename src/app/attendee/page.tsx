@@ -72,21 +72,30 @@ export default function AttendeePlanner() {
   const [done, setDone] = useState<Set<number>>(new Set())
   const [doneMsg, setDoneMsg] = useState<string | null>(null)
   const [loadingStage, setLoadingStage] = useState('')
-
+  const [hydrated, setHydrated] = useState(false)
+  
   useEffect(() => {
+  setHydrated(true)
 
+  const savedItinerary = localStorage.getItem('eventpilot-itinerary')
+  const savedDone = localStorage.getItem('eventpilot-itinerary-done')
 
-    const savedItinerary = localStorage.getItem('eventpilot-itinerary')
-    const savedDone = localStorage.getItem('eventpilot-itinerary-done')
+  if (savedItinerary) {
+    setResult(JSON.parse(savedItinerary))
+  }
 
-    if (savedItinerary) {
-      setResult(JSON.parse(savedItinerary))
-    }
+  if (savedDone) {
+    setDone(new Set(JSON.parse(savedDone)))
+  }
 
-    if (savedDone) {
-      setDone(new Set(JSON.parse(savedDone)))
-    }
-  }, [])
+  const created = Number(
+    localStorage.getItem('eventpilot-itinerary-created')
+  )
+
+  if (created && Date.now() - created > 6 * 60 * 60 * 1000) {
+    localStorage.clear()
+  }
+}, [])
 
   const toggle = (p: string) =>
     setPrefs(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p])
@@ -148,19 +157,6 @@ export default function AttendeePlanner() {
     setLoadingStage('')
   }
 
-  const created =
-    Number(
-      localStorage.getItem(
-        'eventpilot-itinerary-created'
-      )
-    )
-
-  if (
-    Date.now() - created >
-    6 * 60 * 60 * 1000
-  ) {
-    localStorage.clear()
-  }
 
   // agent reads queue via MCP → decrements count → writes back via MCP
   const markDone = async (index: number, activity: Activity) => {
