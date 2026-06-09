@@ -4,7 +4,7 @@
 
 ### Google Cloud Rapid Agent Hackathon 2026 · MongoDB Partner Track
 
-**Live Demo:** https://eventpilot-ai.vercel.app
+**Live Demo:** https://eventpilot-ai-xi.vercel.app/
 
 **Demo Video:** https://youtu.be/YOUR_VIDEO_ID
 
@@ -75,7 +75,14 @@ The platform combines deterministic operational intelligence with AI reasoning t
 
 ## Architecture
 
-<img width="715" height="835" alt="image" src="https://github.com/user-attachments/assets/465b4c34-378c-4056-958c-bcd952bcdf03" />
+<p align="center">
+  <img
+    src="https://github.com/user-attachments/assets/465b4c34-378c-4056-958c-bcd952bcdf03"
+    alt="EventPilot Architecture"
+    height="500"
+    width="500"
+  />
+</p>
 
 
 ```text
