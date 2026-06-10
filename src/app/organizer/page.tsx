@@ -40,6 +40,7 @@ export default function OrganizerDashboard() {
   const [approvedAlerts, setApprovedAlerts] = useState<Set<string>>(new Set())
   const [impactMap, setImpactMap] = useState<Record<string, ImpactData>>({})
   const [approving, setApproving] = useState<string | null>(null)
+  const [dismissing, setDismissing] = useState<string | null>(null)
 
   // tracks when we last auto-fired for each zone
   // prevents firing every 10 seconds when zone is critical
@@ -135,6 +136,24 @@ export default function OrganizerDashboard() {
       setTimeout(() => fetchDashboard(), 800)
     } finally {
       setApproving(null)
+    }
+  }
+
+  const dismissAlert = async (alert: Alert) => {
+    try {
+      await fetch(
+        `/api/organizer/alerts/${alert._id}/dismiss`,
+        { method: 'POST' }
+      )
+
+      setApprovedAlerts(prev => new Set([
+        ...prev,
+        alert._id
+      ]))
+
+      fetchDashboard()
+    } catch (err) {
+      console.error(err)
     }
   }
 
@@ -250,7 +269,7 @@ export default function OrganizerDashboard() {
                         </div>
                       )}
                     </div>
-                    {(zone.computedRisk?.score ?? 0) >= 40 && (
+                    {(zone.computedRisk?.score ?? 0) >= 35 && (
                       <button
                         onClick={() => getRecommendation(zone)}
                         disabled={generating === zone._id}
@@ -313,9 +332,10 @@ export default function OrganizerDashboard() {
                         {approving === alert._id ? 'Agent executing...' : 'Approve & Apply'}
                       </button>
                       <button
-                        onClick={() => acknowledgeAlert(alert)}
+                        onClick={() => dismissAlert(alert) } disabled={dismissing === alert._id}
                         className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white transition-colors">
-                        Dismiss
+                        
+                         {dismissing === alert._id ? 'Dismissing...' : 'Dismiss'}
                       </button>
                     </div>
                   )}
