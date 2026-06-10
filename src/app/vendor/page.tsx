@@ -298,10 +298,14 @@ export default function VendorDashboard() {
               <div className="text-xs text-gray-500 uppercase mb-4">Live Queue</div>
               <div className="text-3xl font-bold mb-1">{data.queue?.currentLength ?? 0}</div>
               <div className="text-xs text-gray-500 mb-4">people in queue</div>
-              <div className="text-3xl font-bold mb-1">{data.queuePrediction?.predictedWaitMinutes ?? 0} min</div>
+              <div className="text-3xl font-bold mb-1">{data.queuePrediction
+                ? `${data.queuePrediction.predictedWaitMinutes} min`
+                : 'Calculating...'}</div>
               <div className="flex items-center gap-1 text-xs text-gray-500">
 
-                {Math.round((data.queuePrediction?.confidence ?? 0) * 100)}% confidence
+                {data.queuePrediction
+                  ? `${Math.round(data.queuePrediction.confidence * 100)}% confidence`
+                  : 'N/A'}
 
                 <span
                   title="

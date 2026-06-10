@@ -2,6 +2,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ResponsiveContainer } from 'recharts'
 import Link from 'next/link'
 
@@ -217,9 +219,26 @@ export default function OrganizerDashboard() {
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="text-2xl font-bold"
-                        style={{ color: COLORS[zone.riskLevel] }}>
-                        {zone.computedRisk?.score ?? zone.riskScore}
+                      <div className="flex items-center gap-1">
+                        <div
+                          className="text-2xl font-bold"
+                          style={{ color: COLORS[zone.riskLevel] }}
+                        >
+                          {zone.computedRisk?.score ?? zone.riskScore}
+                        </div>
+
+                        <span
+                          className="text-gray-500 text-xs cursor-help"
+                          title={
+                            (zone.computedRisk?.score ?? zone.riskScore) > 50
+                              ? 'Critical: Immediately click "Get AI Recommendation" and take action.'
+                              : (zone.computedRisk?.score ?? zone.riskScore) > 45
+                                ? 'Attention: Monitor closely. Consider getting AI recommendation.'
+                                : 'Normal: Crowd levels are fine.'
+                          }
+                        >
+                          ⓘ
+                        </span>
                       </div>
                       {impact && (
                         <div className="text-xs text-green-400 leading-tight">
@@ -228,7 +247,7 @@ export default function OrganizerDashboard() {
                         </div>
                       )}
                     </div>
-                    {(zone.computedRisk?.score ?? 0) >= 30 && (
+                    {(zone.computedRisk?.score ?? 0) >= 40 && (
                       <button
                         onClick={() => getRecommendation(zone)}
                         disabled={generating === zone._id}
@@ -277,8 +296,10 @@ export default function OrganizerDashboard() {
                       </span>
                     )}
                   </div>
-                  <div className="text-gray-400 text-xs mb-3 leading-relaxed">
-                    {alert.recommendation}
+                  <div className="text-gray-400 text-xs mb-3 leading-relaxed prose prose-invert max-w-none">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {alert.recommendation}
+                    </ReactMarkdown>
                   </div>
                   {!approvedAlerts.has(alert._id) && (
                     <div className="flex gap-2 items-center">

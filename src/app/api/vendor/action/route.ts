@@ -1,36 +1,58 @@
-
 import { NextRequest, NextResponse } from 'next/server'
 import { mcpFind, mcpInsert, mcpUpdate } from '@/lib/agent-builder/mcp-tools'
-import { nanoid } from 'nanoid'
 
 export async function POST(req: NextRequest) {
   try {
     const { vendorId, action, itemName } = await req.json()
 
+  
+   const [liveVendors, liveQueues] = await Promise.all([
+      mcpFind('vendors', { _id: vendorId }) as Promise<Record<string, unknown>[]>,
+      mcpFind('queues', { vendorId }) as Promise<Record<string, unknown>[]>
+    ])
+
+    const vendor = Array.isArray(liveVendors) ? liveVendors[0] : liveVendors
+    const queue = Array.isArray(liveQueues) ? liveQueues[0] : null
+
+    if (!vendor) {
+      return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
+    }
+    
+    const zoneRes = await mcpFind('zones', { _id: vendor.zoneId }) as Record<string, unknown>[]
+    const zone = Array.isArray(zoneRes) ? zoneRes[0] : zoneRes
+
+    const crowdPressure =
+      ((zone?.currentPeople as number) || 0) * 0.02
+
+    const baseQueue = (queue?.currentLength as number) || 0
+
+    const effectiveQueueLength = Math.max(
+      0,
+      Math.round(baseQueue + crowdPressure)
+    )
+
+    // ======================================================
+    // OPEN COUNTER
+    // ======================================================
     if (action === 'open_counter') {
-      // STEP 1: agent reads live vendor + queue via MCP
-      const liveVendors = await mcpFind('vendors', { _id: vendorId }) as Record<string, unknown>[]
-      const liveQueues = await mcpFind('queues', { vendorId }) as Record<string, unknown>[]
-
-      const vendor = Array.isArray(liveVendors) ? liveVendors[0] : liveVendors
-      const queue = Array.isArray(liveQueues) ? liveQueues[0] : null
-
-      if (!vendor) return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
-
       const currentCounters = (vendor.activeCounters as number) || 1
       const maxCounters = (vendor.maxCounters as number) || 4
 
       if (currentCounters >= maxCounters) {
-        return NextResponse.json({ success: false, message: 'All counters already open' })
+        return NextResponse.json({
+          success: false,
+          message: 'All counters already open'
+        })
       }
 
-      // STEP 2: agent calculates new values
       const newCounters = currentCounters + 1
       const serviceRate = (vendor.serviceRate as number) || 5
-      const queueLength = queue ? (queue.currentLength as number) || 0 : 0
-      const newWait = Math.max(0, Math.round(queueLength / (serviceRate * newCounters)))
 
-      // STEP 3: agent writes vendor update via MCP
+      const newWait = Math.max(
+        0,
+        Math.round(effectiveQueueLength / (serviceRate * newCounters))
+      )
+
       await mcpUpdate('vendors', { _id: vendorId }, {
         $set: {
           activeCounters: newCounters,
@@ -38,7 +60,6 @@ export async function POST(req: NextRequest) {
         }
       })
 
-      // STEP 4: agent writes queue update via MCP
       if (queue?._id) {
         await mcpUpdate('queues', { _id: queue._id as string }, {
           $set: {
@@ -48,13 +69,12 @@ export async function POST(req: NextRequest) {
         })
       }
 
-      const summary = `Counter opened at ${vendor.name}. ` +
-        `Active counters: ${currentCounters} → ${newCounters} of ${maxCounters}. ` +
-        `Predicted wait reduced to ${newWait} min.`
+      const summary =
+        `Counter opened at ${vendor.name}. ` +
+        `Counters: ${currentCounters} → ${newCounters}. ` +
+        `Effective demand used: ${effectiveQueueLength}. ` +
+        `Wait reduced to ${newWait} min.`
 
-      console.log('Agent executed open_counter:', summary)
-
-      // STEP 5: log agent execution
       await mcpInsert('agent_actions', {
         eventId: 'nova-world-tour-2026',
         trigger: 'vendor_open_counter',
@@ -62,12 +82,10 @@ export async function POST(req: NextRequest) {
           vendorId,
           previousCounters: currentCounters,
           newCounters,
-          previousWait: queue?.predictedWait,
+          effectiveQueueLength,
           newWait
         },
         recommendation: summary,
-        mcpQueryUsed: `find(vendors,{_id:"${vendorId}"}) → find(queues,{vendorId:"${vendorId}"}) → ` +
-          `update-many(vendors) → update-many(queues) [all via MCP]`,
         approved: true
       })
 
@@ -77,23 +95,16 @@ export async function POST(req: NextRequest) {
         previousCounters: currentCounters,
         newCounters,
         maxCounters,
+        effectiveQueueLength,
         newWait,
         message: summary
       })
     }
 
+    // ======================================================
+    // CLOSE COUNTER
+    // ======================================================
     if (action === 'close_counter') {
-      // STEP 1: read live vendor + queue via MCP
-      const liveVendors = await mcpFind('vendors', { _id: vendorId }) as Record<string, unknown>[]
-      const liveQueues = await mcpFind('queues', { vendorId }) as Record<string, unknown>[]
-
-      const vendor = Array.isArray(liveVendors) ? liveVendors[0] : liveVendors
-      const queue = Array.isArray(liveQueues) ? liveQueues[0] : null
-
-      if (!vendor) {
-        return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
-      }
-
       const currentCounters = (vendor.activeCounters as number) || 1
 
       if (currentCounters <= 1) {
@@ -103,19 +114,14 @@ export async function POST(req: NextRequest) {
         })
       }
 
-      const maxCounters = (vendor.maxCounters as number) || 4
       const newCounters = currentCounters - 1
-
       const serviceRate = (vendor.serviceRate as number) || 5
-      const queueLength = queue ? (queue.currentLength as number) || 0 : 0
 
-      // wait increases when counters reduce
       const newWait = Math.max(
         0,
-        Math.round(queueLength / (serviceRate * newCounters))
+        Math.round(effectiveQueueLength / (serviceRate * newCounters))
       )
 
-      // STEP 2: update vendor
       await mcpUpdate('vendors', { _id: vendorId }, {
         $set: {
           activeCounters: newCounters,
@@ -123,7 +129,6 @@ export async function POST(req: NextRequest) {
         }
       })
 
-      // STEP 3: update queue prediction
       if (queue?._id) {
         await mcpUpdate('queues', { _id: queue._id as string }, {
           $set: {
@@ -135,12 +140,10 @@ export async function POST(req: NextRequest) {
 
       const summary =
         `Counter closed at ${vendor.name}. ` +
-        `Active counters: ${currentCounters} → ${newCounters}. ` +
-        `Predicted wait increased to ${newWait} min.`
+        `Counters: ${currentCounters} → ${newCounters}. ` +
+        `Effective demand used: ${effectiveQueueLength}. ` +
+        `Wait increased to ${newWait} min.`
 
-      console.log('Agent executed close_counter:', summary)
-
-      // STEP 4: log agent action
       await mcpInsert('agent_actions', {
         eventId: 'nova-world-tour-2026',
         trigger: 'vendor_close_counter',
@@ -148,13 +151,10 @@ export async function POST(req: NextRequest) {
           vendorId,
           previousCounters: currentCounters,
           newCounters,
-          previousWait: queue?.predictedWait,
+          effectiveQueueLength,
           newWait
         },
         recommendation: summary,
-        mcpQueryUsed:
-          `find(vendors,{_id:"${vendorId}"}) → find(queues,{vendorId:"${vendorId}"}) → ` +
-          `update(vendors) → update(queues) [via MCP]`,
         approved: true
       })
 
@@ -163,29 +163,32 @@ export async function POST(req: NextRequest) {
         action: 'close_counter',
         previousCounters: currentCounters,
         newCounters,
-        maxCounters,
+        effectiveQueueLength,
         newWait,
         message: summary
       })
     }
 
+    // ======================================================
+    // RESTOCK
+    // ======================================================
     if (action === 'restock' && itemName) {
-      // STEP 1: agent reads live inventory via MCP
       const liveInventory = await mcpFind('inventory', { vendorId }) as Record<string, unknown>[]
       const items = Array.isArray(liveInventory) ? liveInventory : []
       const item = items.find(i => i.itemName === itemName)
 
-      if (!item) return NextResponse.json({ error: 'Item not found' }, { status: 404 })
+      if (!item) {
+        return NextResponse.json({ error: 'Item not found' }, { status: 404 })
+      }
 
-      const liveVendors = await mcpFind('vendors', { _id: vendorId }) as Record<string, unknown>[]
-      const vendor = Array.isArray(liveVendors) ? liveVendors[0] : liveVendors
+      const initialStock =
+        (item.initialStock as number) ||
+        ((item.currentStock as number) * 2) ||
+        200
 
-      // STEP 2: agent calculates new stock level
-      const initialStock = (item.initialStock as number) || ((item.currentStock as number) * 2) || 200
       const newStock = Math.round(initialStock * 0.8)
       const previousStock = item.currentStock as number
 
-      // STEP 3: agent writes inventory update via MCP
       await mcpUpdate('inventory',
         { vendorId, itemName },
         {
@@ -196,12 +199,10 @@ export async function POST(req: NextRequest) {
         }
       )
 
-      const summary = `${itemName} restocked at ${(vendor as Record<string, unknown>)?.name || vendorId}. ` +
-        `Stock: ${previousStock} → ${newStock} units (80% of initial ${initialStock}).`
+      const summary =
+        `${itemName} restocked at ${vendor?.name || vendorId}. ` +
+        `Stock: ${previousStock} → ${newStock}.`
 
-      console.log('Agent executed restock:', summary)
-
-      // STEP 4: log agent execution
       await mcpInsert('agent_actions', {
         eventId: 'nova-world-tour-2026',
         trigger: 'vendor_restock',
@@ -209,12 +210,9 @@ export async function POST(req: NextRequest) {
           vendorId,
           itemName,
           previousStock,
-          newStock,
-          initialStock
+          newStock
         },
         recommendation: summary,
-        mcpQueryUsed: `find(inventory,{vendorId:"${vendorId}"}) → ` +
-          `update-many(inventory,{vendorId:"${vendorId}",itemName:"${itemName}"}) [via MCP]`,
         approved: true
       })
 

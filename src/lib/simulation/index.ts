@@ -10,9 +10,9 @@ export async function runSimulationTick(): Promise<void> {
   const crowdIntensity =
     0.3 +
     0.7 *
-      Math.sin(
-        Math.PI * Math.max(0, (minuteOfDay - 960) / 180)
-      )
+    Math.sin(
+      Math.PI * Math.max(0, (minuteOfDay - 960) / 180)
+    )
 
   // Additional surge during concert peak hours
   const concertSurge =
@@ -56,10 +56,10 @@ export async function runSimulationTick(): Promise<void> {
         newDensity > 1.0
           ? 85 + (newDensity - 1) * 50
           : newDensity > 0.8
-          ? 65 + (newDensity - 0.8) * 100
-          : newDensity > 0.6
-          ? 40 + (newDensity - 0.6) * 125
-          : newDensity * 67
+            ? 65 + (newDensity - 0.8) * 100
+            : newDensity > 0.6
+              ? 40 + (newDensity - 0.6) * 125
+              : newDensity * 67
       )
     )
 
@@ -67,10 +67,10 @@ export async function runSimulationTick(): Promise<void> {
       riskScore >= 80
         ? 'critical'
         : riskScore >= 65
-        ? 'high'
-        : riskScore >= 45
-        ? 'attention'
-        : 'normal'
+          ? 'high'
+          : riskScore >= 45
+            ? 'attention'
+            : 'normal'
 
     zoneUpdates.push({
       updateOne: {
@@ -118,47 +118,51 @@ export async function runSimulationTick(): Promise<void> {
       0.75 +
       ((vendor?.popularityScore ?? 50) / 100)
 
+    const avgZoneDensity =
+      zones.reduce((a, z) => a + z.crowdDensity, 0) / zones.length
+
+    const zoneMultiplier = 0.8 + avgZoneDensity
+
     const arrivalRate =
       queue.arrivalRate *
       adjustedIntensity *
-      popularityMultiplier
+      popularityMultiplier *
+      zoneMultiplier
+
+    const baseServiceRate = queue.serviceRate ?? 5
 
     const effectiveServiceRate =
-      queue.serviceRate *
-      Math.max(
-        1,
-        vendor?.activeCounters ?? 1
-      )
+      baseServiceRate * (vendor?.activeCounters ?? 1)
 
     const arrivals = Math.round(
       arrivalRate *
-        (10 / 60) *
-        (0.6 + Math.random() * 0.8)
+      (10 / 60) *
+      (0.6 + Math.random() * 0.8)
     )
 
     const served = Math.min(
       queue.currentLength,
       Math.round(
         effectiveServiceRate *
-          (10 / 60) *
-          (0.85 + Math.random() * 0.3)
+        (10 / 60) *
+        (0.85 + Math.random() * 0.3)
       )
     )
-
     const newLength = Math.max(
       0,
-      queue.currentLength +
-        arrivals -
-        served
+      Math.min(
+        2000, // safety cap
+        queue.currentLength + arrivals - served
+      )
     )
 
     const newWait =
       newLength > 0
         ? Math.round(
-            newLength /
-              effectiveServiceRate +
-              (Math.random() * 2 - 1)
-          )
+          newLength /
+          effectiveServiceRate +
+          (Math.random() * 2 - 1)
+        )
         : 0
 
     queueUpdates.push({
@@ -167,9 +171,8 @@ export async function runSimulationTick(): Promise<void> {
         update: {
           $set: {
             currentLength: newLength,
-            predictedWait: Math.max(
-              0,
-              newWait
+            predictedWait: Math.round(
+              newLength / effectiveServiceRate
             ),
             updatedAt: now
           }
@@ -202,9 +205,9 @@ export async function runSimulationTick(): Promise<void> {
 
     const sold = Math.round(
       item.baseSalesRate *
-        adjustedIntensity *
-        (10 / 60) *
-        (0.7 + Math.random() * 0.6)
+      adjustedIntensity *
+      (10 / 60) *
+      (0.7 + Math.random() * 0.6)
     )
 
     const newStock = Math.max(
