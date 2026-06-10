@@ -6,7 +6,7 @@
 
 **Live Demo:** https://eventpilot-ai-xi.vercel.app/
 
-**Demo Video:** https://youtu.be/YOUR_VIDEO_ID
+**Demo Video:** [Youtube Video](https://youtu.be/8ykNtJUB9ns)
 
 ---
 
