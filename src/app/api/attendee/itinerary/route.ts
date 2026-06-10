@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
       }
     })
 
+    
     // no timestamps — use order, duration, and whyNow reasoning instead
     const prompt = `Generate optimized event itinerary as a SEQUENCE — no timestamps.
 Preferences: ${preferences.join(', ')}
