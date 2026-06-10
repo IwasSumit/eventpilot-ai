@@ -242,7 +242,7 @@ export default function OrganizerDashboard() {
                       </div>
                       {impact && (
                         <div className="text-xs text-green-400 leading-tight">
-                          ↓ {impact.prevRisk}→{impact.newRisk}
+                          ↓ {impact.prevDensity}→{impact.newDensity}
                           <div className="text-gray-600">agent via MCP</div>
                         </div>
                       )}
