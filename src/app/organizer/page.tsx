@@ -138,7 +138,10 @@ export default function OrganizerDashboard() {
     }
   }
 
-  const pendingCount = data?.recentActions?.filter(a => !a.approved).length ?? 0
+  const pendingCount =
+  data?.alerts?.filter(
+    a => !approvedAlerts.has(a._id)
+  ).length ?? 0
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-400">
