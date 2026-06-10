@@ -148,6 +148,10 @@ These calculations are deterministic and explainable.
 
 Gemini interprets the results but does not perform the calculations.
 
+📘 **Read the full documentation:**  
+
+➡️ [Decision Models and Analytical Framework](./docs/OPS_RESEARCH_FOUNDATIONS.md)
+
 ### Zone Risk (MCDA Weighted Scoring)
 
 ```text
