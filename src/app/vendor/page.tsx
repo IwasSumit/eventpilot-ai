@@ -38,6 +38,7 @@ export default function VendorDashboard() {
   const [actionMsg, setActionMsg] = useState<string | null>(null)
   const [restockingItem, setRestockingItem] = useState<string | null>(null)
   const [openingCounter, setOpeningCounter] = useState(false)
+  const [closingCounter, setClosingCounter] = useState(false)
   const [generatingAdvice, setGeneratingAdvice] =
     useState<Record<string, boolean>>({})
 
@@ -155,6 +156,33 @@ export default function VendorDashboard() {
     setTimeout(() => setActionMsg(null), 5000)
   }
 
+  const closeCounter = async () => {
+    if (!data) return
+
+    setClosingCounter(true)
+
+    const res = await fetch('/api/vendor/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        vendorId: selectedId,
+        action: 'close_counter'
+      })
+    })
+
+    const result = await res.json()
+
+    if (result.success) {
+      setActionMsg(`✓ ${result.message}`)
+      setTimeout(() => loadVendor(selectedId), 600)
+    } else {
+      setActionMsg(result.message || 'Could not close counter')
+    }
+
+    setClosingCounter(false)
+    setTimeout(() => setActionMsg(null), 5000)
+  }
+
   // agent reads inventory via MCP → resets stock → writes back via MCP
   const restockItem = async (itemName: string) => {
     setRestockingItem(itemName)
@@ -232,14 +260,33 @@ export default function VendorDashboard() {
                       }`} />
                   ))}
                 </div>
-                {canOpenCounter ? (
-                  <button onClick={openCounter} disabled={openingCounter}
-                    className="w-full px-3 py-2 text-xs bg-teal-700 hover:bg-teal-600 disabled:opacity-50 rounded-lg text-white transition-colors">
-                    {openingCounter ? 'Agent executing...' : '+ Open Counter'}
-                  </button>
-                ) : (
-                  <div className="text-xs text-gray-600 text-center">All counters open</div>
-                )}
+                <div className="flex flex-col gap-2">
+                  {canOpenCounter && (
+                    <button
+                      onClick={openCounter}
+                      disabled={openingCounter}
+                      className="w-full px-3 py-2 text-xs bg-teal-700 hover:bg-teal-600 disabled:opacity-50 rounded-lg text-white transition-colors"
+                    >
+                      {openingCounter ? 'Opening...' : '+ Open Counter'}
+                    </button>
+                  )}
+
+                  {data.vendor.activeCounters > 1 && (
+                    <button
+                      onClick={closeCounter}
+                      disabled={closingCounter}
+                      className="w-full px-3 py-2 text-xs bg-red-700 hover:bg-red-600 disabled:opacity-50 rounded-lg text-white transition-colors"
+                    >
+                      {closingCounter ? 'Closing...' : '− Close Counter'}
+                    </button>
+                  )}
+
+                  {!canOpenCounter && data.vendor.activeCounters <= 1 && (
+                    <div className="text-xs text-gray-600 text-center">
+                      Min 1 counter must stay open
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="mt-3 text-xs text-gray-600 text-center">
                 Pop: {data.vendor.popularityScore}/100
@@ -291,7 +338,7 @@ Higher confidence means the forecast closely matches current queue conditions.
                     left: 20,
                     bottom: 30
                   }}>
-                  
+
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="t"
