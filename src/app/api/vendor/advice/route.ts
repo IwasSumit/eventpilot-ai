@@ -39,13 +39,27 @@ Do not return JSON.`
 
     const mcpQuery = `find(queues,{vendorId:"${vendorId}"}) + insert(alerts) + insert(agent_actions)`
 
-    await mcpInsert('alerts', {
-      eventId: 'nova-world-tour-2026', type: 'vendor_risk',
-      severity: vendorData.vendorRisk >= 75 ? 'critical' : 'warning',
-      title: `${vendorData.vendor.name}${autoFired ? ' — Auto Alert' : ''}`,
-      message: `Vendor risk: ${vendorData.vendorRisk}/100`,
-      recommendation: advice, vendorId, status: 'active', autoFired: autoFired ?? false
+    const existingAlerts = await mcpFind('alerts', {
+      vendorId,
+      status: 'active'
     })
+    if (existingAlerts.length === 0) {
+      await mcpInsert('alerts', {
+        eventId: 'nova-world-tour-2026',
+        type: 'vendor_risk',
+        severity:
+          vendorData.vendorRisk >= 75
+            ? 'critical'
+            : 'warning',
+        title: `${vendorData.vendor.name}${autoFired ? ' — Auto Alert' : ''
+          }`,
+        message: `Vendor risk: ${vendorData.vendorRisk}/100`,
+        recommendation: advice,
+        vendorId,
+        status: 'active',
+        autoFired: autoFired ?? false
+      })
+    }
 
     await mcpInsert('agent_actions', {
       eventId: 'nova-world-tour-2026',

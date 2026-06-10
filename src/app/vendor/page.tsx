@@ -6,6 +6,11 @@ import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
+interface AdviceEntry {
+  advice: string
+  generatedAt: string
+}
+
 const VENDORS = [
   { id: 'v-ramen', name: 'Ramen Stall' },
   { id: 'v-fries', name: 'Fries Stall' },
@@ -32,7 +37,8 @@ export default function VendorDashboard() {
   const currentVendorRef = useRef(selectedId)
   const [data, setData] = useState<VendorData | null>(null)
   const [loading, setLoading] = useState(false)
-  const [adviceMap, setAdviceMap] = useState<Record<string, string>>({})
+  const [adviceMap, setAdviceMap] =
+    useState<Record<string, AdviceEntry>>({})
   const [historyMap, setHistoryMap] =
     useState<Record<string, { t: string; q: number }[]>>({})
   const [actionMsg, setActionMsg] = useState<string | null>(null)
@@ -100,6 +106,29 @@ export default function VendorDashboard() {
     return () => clearInterval(interval)
   }, [loadVendor])
 
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('vendor-ai-advice')
+
+      if (saved) {
+        setAdviceMap(JSON.parse(saved))
+      }
+    } catch (error) {
+      console.error('Failed to load saved advice:', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        'vendor-ai-advice',
+        JSON.stringify(adviceMap)
+      )
+    } catch (error) {
+      console.error('Failed to save advice:', error)
+    }
+  }, [adviceMap])
+
   const getAdvice = async () => {
     if (!data || generatingAdvice[selectedId]) return
 
@@ -125,7 +154,10 @@ export default function VendorDashboard() {
 
         setAdviceMap(prev => ({
           ...prev,
-          [selectedId]: result.advice
+          [selectedId]: {
+            advice: result.advice,
+            generatedAt: new Date().toISOString()
+          }
         }))
       }
     } finally {
@@ -198,6 +230,28 @@ export default function VendorDashboard() {
     }
     setRestockingItem(null)
     setTimeout(() => setActionMsg(null), 5000)
+  }
+
+  const getTimeAgo = (timestamp: string) => {
+    const diffMs = Date.now() - new Date(timestamp).getTime()
+
+    const minutes = Math.floor(diffMs / (1000 * 60))
+
+    if (minutes < 1) return 'just now'
+
+    if (minutes < 60) {
+      return `${minutes} minute${minutes === 1 ? '' : 's'} ago`
+    }
+
+    const hours = Math.floor(minutes / 60)
+
+    if (hours < 24) {
+      return `${hours} hour${hours === 1 ? '' : 's'} ago`
+    }
+
+    const days = Math.floor(hours / 24)
+
+    return `${days} day${days === 1 ? '' : 's'} ago`
   }
 
   const riskColor = !data ? '#6b7280' :
@@ -453,22 +507,28 @@ Higher confidence means the forecast closely matches current queue conditions.
                 </div>
               )}
               {adviceMap[selectedId] ? (
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    h3: props => (
-                      <h3 className="text-white font-semibold mt-4 mb-2" {...props} />
-                    ),
-                    p: props => (
-                      <p className="text-gray-300 mb-3 leading-relaxed" {...props} />
-                    ),
-                    li: props => (
-                      <li className="text-gray-300 ml-5 list-disc mb-2" {...props} />
-                    )
-                  }}
-                >
-                  {adviceMap[selectedId]}
-                </ReactMarkdown>
+                <>
+                  <div className="text-xs text-gray-500 mb-3">
+                    Generated {getTimeAgo(adviceMap[selectedId].generatedAt)}
+                  </div>
+
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      h3: props => (
+                        <h3 className="text-white font-semibold mt-4 mb-2" {...props} />
+                      ),
+                      p: props => (
+                        <p className="text-gray-300 mb-3 leading-relaxed" {...props} />
+                      ),
+                      li: props => (
+                        <li className="text-gray-300 ml-5 list-disc mb-2" {...props} />
+                      )
+                    }}
+                  >
+                    {adviceMap[selectedId].advice}
+                  </ReactMarkdown>
+                </>
               ) : (
                 <div className="text-sm text-gray-600 mb-4 leading-relaxed">
                   Agent reads live queue and inventory from MongoDB MCP,

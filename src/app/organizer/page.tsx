@@ -140,6 +140,8 @@ export default function OrganizerDashboard() {
   }
 
   const dismissAlert = async (alert: Alert) => {
+    setDismissing(alert._id)
+
     try {
       await fetch(
         `/api/organizer/alerts/${alert._id}/dismiss`,
@@ -154,6 +156,8 @@ export default function OrganizerDashboard() {
       fetchDashboard()
     } catch (err) {
       console.error(err)
+    } finally {
+      setDismissing(null)
     }
   }
 
@@ -332,10 +336,10 @@ export default function OrganizerDashboard() {
                         {approving === alert._id ? 'Agent executing...' : 'Approve & Apply'}
                       </button>
                       <button
-                        onClick={() => dismissAlert(alert) } disabled={dismissing === alert._id}
+                        onClick={() => dismissAlert(alert)} disabled={dismissing === alert._id}
                         className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white transition-colors">
-                        
-                         {dismissing === alert._id ? 'Dismissing...' : 'Dismiss'}
+
+                        {dismissing === alert._id ? 'Dismissing...' : 'Dismiss'}
                       </button>
                     </div>
                   )}
