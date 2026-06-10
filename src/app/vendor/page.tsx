@@ -291,6 +291,7 @@ Higher confidence means the forecast closely matches current queue conditions.
                     left: 20,
                     bottom: 30
                   }}>
+                  
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="t"
@@ -336,7 +337,7 @@ Higher confidence means the forecast closely matches current queue conditions.
                       activeDot={{ r: 7 }}
                       name="Queue Size"
                     />
-                    <Legend />
+                    <Legend verticalAlign="top" />
                   </LineChart>
                 </ResponsiveContainer>
 
