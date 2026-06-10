@@ -139,9 +139,9 @@ export default function OrganizerDashboard() {
   }
 
   const pendingCount =
-  data?.alerts?.filter(
-    a => !approvedAlerts.has(a._id)
-  ).length ?? 0
+    data?.alerts?.filter(
+      a => !approvedAlerts.has(a._id)
+    ).length ?? 0
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-400">
@@ -365,7 +365,11 @@ export default function OrganizerDashboard() {
                           : ''}
                       </span>
                     </div>
-                    <div className="text-gray-300 mb-1.5 leading-relaxed">{displayText}</div>
+                    <div className="text-gray-300 mb-1.5 leading-relaxed prose prose-invert max-w-none">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {displayText}
+                      </ReactMarkdown>
+                    </div>
                     <div className="text-gray-500 text-xs">
                       AI used live crowd and queue information to execute this action.
                     </div>
