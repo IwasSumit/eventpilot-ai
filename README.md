@@ -6,7 +6,7 @@
 
 **Live Demo:** https://eventpilot-ai-xi.vercel.app/
 
-**Demo Video:** https://youtu.be/YOUR_VIDEO_ID
+**Demo Video:** [Youtube Video](https://youtu.be/8ykNtJUB9ns)
 
 ---
 
@@ -148,6 +148,8 @@ These calculations are deterministic and explainable.
 
 Gemini interprets the results but does not perform the calculations.
 
+[Mathematical Foundations of EventPilot AI](./docs/OPS_RESEARCH_FOUNDATIONS.md)
+
 ### Zone Risk (MCDA Weighted Scoring)
 
 ```text
@@ -195,15 +197,19 @@ activityScore =
 
 ### Organizer Dashboard
 
-![Organizer Dashboard](docs/organizer-dashboard.png)
+<img width="1918" height="963" alt="Screenshot 2026-06-10 213712" src="https://github.com/user-attachments/assets/881ed736-2458-487f-b45d-8e035d6c3d67" />
 
 ### Vendor Dashboard
 
-![Vendor Dashboard](docs/vendor-dashboard.png)
+<img width="1918" height="970" alt="Screenshot 2026-06-10 213602" src="https://github.com/user-attachments/assets/3b077ca3-f80e-4c9a-822e-98ad21c48b31" />
 
 ### Attendee Planner
 
-![Attendee Planner](docs/attendee-planner.png)
+<img width="1918" height="962" alt="Screenshot 2026-06-10 213757" src="https://github.com/user-attachments/assets/d9620ba7-9d4e-4b46-a137-e81ffe9930d6" />
+
+<img width="1918" height="962" alt="Screenshot 2026-06-10 213853" src="https://github.com/user-attachments/assets/61f8bbc8-c199-4ced-888b-ec32280d5d14" />
+
+<img width="1918" height="967" alt="Screenshot 2026-06-10 213906" src="https://github.com/user-attachments/assets/84683cc2-f0a6-40bf-af55-8d00a19c7d2b" />
 
 ---
 
