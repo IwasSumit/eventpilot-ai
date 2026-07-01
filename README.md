@@ -18,6 +18,8 @@ It monitors crowd density, vendor queues, inventory levels, and attendee movemen
 
 The platform combines deterministic operational intelligence with AI reasoning to improve event flow, reduce congestion, and enhance attendee experience.
 
+(Note: Please use it on desktop/laptop for best experience.)
+
 ### Key Capabilities
 
 * Live crowd monitoring and risk scoring
